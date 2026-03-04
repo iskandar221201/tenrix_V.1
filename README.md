@@ -40,22 +40,35 @@ Tenrix covers a wide spectrum of analytical needs, powered by industry-standard 
 ## 🛠️ Getting Started
 
 ### Prerequisites
-- Python 3.10+
-- (Optional) OpenAI, Groq, or Google Gemini API Key for AI interpretion
+
+To run Tenrix locally or build the source, you'll need:
+- **Python 3.10+**
+- **GTK3-Runtime** (Required for PDF export via WeasyPrint)
+  - *Windows*: Download and install [GTK3-Runtime](https://github.com/tschoonj/GTK-for-Windows-Runtime-Environment-Installer/releases) or ensure the `GTK3-Runtime/bin` folder exists in the project root.
+- **API Keys** (Required for AI features):
+  - `GOOGLE_API_KEY` (Gemini - Primary)
+  - `OPENAI_API_KEY` (Optional)
+  - `GROQ_API_KEY` (Optional)
 
 ### Installation
+
 1. Clone the repository:
    ```bash
    git clone https://github.com/iskandar221201/tenrix_V.1.git
    cd tenrix_V.1
    ```
-2. Install dependencies:
+
+2. Install Python dependencies:
    ```bash
    pip install -r requirements.txt
    ```
 
+3. Configure Environment:
+   You'll be prompted to enter your API keys on the first run, or you can set them in your environment variables.
+
 ### Usage
-Run the main entry point to launch the Terminal User Interface (TUI):
+
+Launch the Terminal User Interface (TUI):
 ```bash
 python main.py
 ```
@@ -63,11 +76,14 @@ python main.py
 ---
 
 ## 🏗️ Architecture
-Tenrix is built with a modular design to ensure stability and extensibility:
+
+Tenrix is built with a modular design for stability and ease of maintenance:
 - `tui/`: Sleek, interactive terminal interface using `rich` and `prompt_toolkit`.
-- `ai/`: Intelligent routing, planning, and interpretation engine.
+- `ai/`: Intelligent routing, planning, and interpretation engine (supports Gemini, OpenAI, Groq).
 - `analysis/`: High-performance statistical core using `pandas`, `polars`, and `duckdb`.
+- `core/`: Core logic including session management and data connectors.
 - `export/`: High-quality report generation (PDF, Excel, PNG).
+- `utils/`: Common utilities such as logging and configuration.
 
 ---
 
