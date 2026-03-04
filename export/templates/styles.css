@@ -1,0 +1,80 @@
+@page {
+    size: A4;
+    margin: 2cm;
+}
+body {
+    font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+    color: #333;
+    line-height: 1.6;
+}
+.cover-page {
+    text-align: center;
+    padding-top: 200px;
+}
+.cover-title {
+    font-size: 48px;
+    color: #2563eb;
+    margin-bottom: 10px;
+}
+.cover-subtitle {
+    font-size: 24px;
+    color: #6b7280;
+    margin-bottom: 60px;
+}
+.cover-info {
+    font-size: 14px;
+    color: #6b7280;
+}
+.page-break {
+    page-break-after: always;
+}
+.analysis-block {
+    margin-bottom: 40px;
+}
+.analysis-block h2 {
+    color: #2563eb;
+    border-bottom: 2px solid #e5e7eb;
+    padding-bottom: 8px;
+}
+.chart-img {
+    max-width: 100%;
+    margin: 20px 0;
+    border: 1px solid #e5e7eb;
+    border-radius: 4px;
+}
+.summary-table {
+    width: 100%;
+    border-collapse: collapse;
+    margin: 20px 0;
+}
+.summary-table th {
+    background-color: #f3f4f6;
+    text-align: left;
+    padding: 10px;
+    border: 1px solid #e5e7eb;
+    font-weight: 600;
+}
+.summary-table td {
+    padding: 8px 10px;
+    border: 1px solid #e5e7eb;
+}
+.summary-table tr:nth-child(even) {
+    background-color: #f9fafb;
+}
+.interpretation {
+    background-color: #eff6ff;
+    border-left: 4px solid #2563eb;
+    padding: 15px 20px;
+    margin: 20px 0;
+    border-radius: 0 4px 4px 0;
+}
+.interpretation h3 {
+    color: #2563eb;
+    margin-top: 0;
+}
+.profile-section {
+    margin-bottom: 30px;
+}
+.profile-section h2 {
+    color: #2563eb;
+}

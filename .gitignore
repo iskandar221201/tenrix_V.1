@@ -1,0 +1,27 @@
+# Byte-compiled / optimized / DLL files
+__pycache__/
+*.py[cod]
+*$py.class
+
+# Environments
+.venv/
+env/
+venv/
+ENV/
+
+# Build and Distribution
+build/
+dist/
+dist_nuitka/
+dist_installer/
+*.spec
+*.pkg
+
+# Operating System
+.DS_Store
+Thumbs.db
+
+# Project specific
+*.log
+.coverage
+.pytest_cache/

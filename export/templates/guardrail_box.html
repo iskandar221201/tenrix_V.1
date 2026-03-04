@@ -1,0 +1,17 @@
+<div class="guardrail-box {{ 'status-warning' if not passed else 'status-ok' }}">
+    <h3><span class="icon">{{ '⚠️' if not passed else '✅' }}</span> Data Quality Guardrails</h3>
+    
+    {% if not passed %}
+        <p class="guardrail-intro">Analisis ini mungkin tidak akurat karena asumsi dasar statistik berikut tidak terpenuhi:</p>
+        <ul class="guardrail-list">
+        {% for violation in violations %}
+            {% if not violation.passed %}
+                <li><strong>Gagal:</strong> {{ violation.message }}</li>
+            {% endif %}
+        {% endfor %}
+        </ul>
+        <p class="guardrail-disclaimer"><em>Hasil analisis tetap ditampilkan di bawah, tetapi mohon interpretasikan dengan hati-hati.</em></p>
+    {% else %}
+        <p class="guardrail-intro">Semua asumsi statistik dasar terpenuhi. Kualitas data untuk analisis ini baik.</p>
+    {% endif %}
+</div>
