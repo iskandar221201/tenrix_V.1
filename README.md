@@ -1,0 +1,80 @@
+# 🌌 Tenrix
+
+**Tenrix** is a CLI-based data analysis tool that combines 23 statistical methods with artificial intelligence. 
+
+Users simply type a question in natural language — Tenrix automatically formulates an analysis plan, runs the appropriate statistics, and delivers an AI interpretation directly in the terminal.
+
+---
+
+## 🚀 Experience the Future of Data Analysis
+
+Transform your raw datasets into actionable insights using simple natural language commands. Tenrix bridges the gap between complex statistical rigor and intuitive human reasoning.
+
+### ✨ Key Features
+- **Natural Language Interface**: No more complex SQL or Python scripts. Just ask: *"Why did sales dip in Q3?"*
+- **Auto-Planner**: Dynamically selects the best statistical methodology for your specific data and question.
+- **Deep Interpretation**: Generates human-readable summaries that explain the *why* behind the numbers.
+- **Rich Visualizations**: Interactive terminal-based charts and exportable PDF reports.
+- **Extensive Library**: Access to 23+ pre-configured statistical methods across 9 categories.
+
+---
+
+## 📊 Analytical Capabilities
+
+Tenrix covers a wide spectrum of analytical needs, powered by industry-standard libraries like `scipy`, `statsmodels`, and `scikit-learn`.
+
+| Category | Methods Covered |
+| :--- | :--- |
+| **Descriptive** | Summary Stats, Correlation, T-Tests, ANOVA, Chi-Square, Mann-Whitney U |
+| **Regression** | Linear, Logistic, Polynomial |
+| **Clustering** | K-Means, DBSCAN, Hierarchical |
+| **Time Series** | ARIMA Forecasting, Prophet, Granger Causality |
+| **Dimensionality** | PCA, t-SNE, UMAP |
+| **Anomaly** | Isolation Forest, Z-Score |
+| **Business** | Pareto (80/20), Cohort Analysis, Market Basket Analysis |
+| **Survival** | Kaplan-Meier |
+| **Custom** | AI-Driven Logic & Pattern Discovery |
+
+---
+
+## 🛠️ Getting Started
+
+### Prerequisites
+- Python 3.10+
+- (Optional) OpenAI, Groq, or Google Gemini API Key for AI interpretion
+
+### Installation
+1. Clone the repository:
+   ```bash
+   git clone https://github.com/iskandar221201/tenrix_V.1.git
+   cd tenrix_V.1
+   ```
+2. Install dependencies:
+   ```bash
+   pip install -r requirements.txt
+   ```
+
+### Usage
+Run the main entry point to launch the Terminal User Interface (TUI):
+```bash
+python main.py
+```
+
+---
+
+## 🏗️ Architecture
+Tenrix is built with a modular design to ensure stability and extensibility:
+- `tui/`: Sleek, interactive terminal interface using `rich` and `prompt_toolkit`.
+- `ai/`: Intelligent routing, planning, and interpretation engine.
+- `analysis/`: High-performance statistical core using `pandas`, `polars`, and `duckdb`.
+- `export/`: High-quality report generation (PDF, Excel, PNG).
+
+---
+
+## 🛡️ License
+Distributed under the MIT License. See `LICENSE` for more information.
+
+---
+<p align="center">
+  Built with ❤️ for Data Scientists and Business Analysts.
+</p>
