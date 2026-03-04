@@ -1,6 +1,6 @@
 # 🌌 Tenrix
 
-**Tenrix** is a CLI-based data analysis tool that combines 23 statistical methods with artificial intelligence. 
+**Tenrix** is a CLI-based data analysis tool that combines 25+ statistical methods with artificial intelligence. 
 
 Users simply type a question in natural language — Tenrix automatically formulates an analysis plan, runs the appropriate statistics, and delivers an AI interpretation directly in the terminal.
 
@@ -15,13 +15,20 @@ Transform your raw datasets into actionable insights using simple natural langua
 - **Auto-Planner**: Dynamically selects the best statistical methodology for your specific data and question.
 - **Deep Interpretation**: Generates human-readable summaries that explain the *why* behind the numbers.
 - **Rich Visualizations**: Interactive terminal-based charts and exportable PDF reports.
-- **Extensive Library**: Access to 23+ pre-configured statistical methods across 9 categories.
+- **Extensive Library**: Access to 25+ pre-configured statistical methods across 9 categories.
+- **Multi-Source Support**: Seamlessly work with CSV, Excel, SQLite, and SQL Dumps.
+
+### 📂 Supported Data Formats
+- **CSV & TSV**: Standard delimited files.
+- **Excel**: `.xlsx`, `.xls`, `.xlsm`, `.xlsb` (Multi-sheet support).
+- **SQLite**: `.db`, `.sqlite`, `.sqlite3` (Read-only, multi-table JOIN via DuckDB).
+- **SQL Dump**: `.sql` (Parsed via DuckDB for MySQL/PostgreSQL compatibility).
 
 ---
 
 ## 📊 Analytical Capabilities
 
-Tenrix covers a wide spectrum of analytical needs, powered by industry-standard libraries like `scipy`, `statsmodels`, and `scikit-learn`.
+Tenrix covers a wide spectrum of analytical needs, powered by industry-standard libraries like `scipy`, `statsmodels`, `scikit-learn`, `prophet`, and `polars`.
 
 | Category | Methods Covered |
 | :--- | :--- |
