@@ -52,6 +52,12 @@ To run Tenrix locally or build the source, you'll need:
 - **Python 3.10+**
 - **GTK3-Runtime** (Required for PDF export via WeasyPrint)
   - *Windows*: Download and install [GTK3-Runtime](https://github.com/tschoonj/GTK-for-Windows-Runtime-Environment-Installer/releases) or ensure the `GTK3-Runtime/bin` folder exists in the project root.
+- **Kaleido** (Required for static image export PNG/JPG)
+  - *Note*: Usually installed via `pip`, but requires its standalone binary to be accessible during standalone builds (.exe).
+- **Microsoft Visual C++ Redistributable**
+  - Essential for C++ extensions used by `pandas`, `scipy`, and `numpy`.
+- **SQLite3 Engine**
+  - While Python includes `sqlite3`, certain operations may require the latest `sqlite3.dll` (especially for the PyInstaller build).
 - **API Keys** (Required for AI features):
   - `GOOGLE_API_KEY` (Gemini - Primary)
   - `OPENAI_API_KEY` (Optional)
