@@ -50,14 +50,19 @@ if %ERRORLEVEL% neq 0 (
 )
 
 echo [3/5] Downloading Tenrix from GitHub...
-if exist "%INSTALL_DIR%" (
-    echo Repository already exists. Updating...
-    cd /d "%INSTALL_DIR%"
-    git pull
-) else (
-    echo Cloning repository...
-    git clone "%REPO_URL%" "%INSTALL_DIR%"
+if not exist "%INSTALL_DIR%" mkdir "%INSTALL_DIR%"
+cd /d "%INSTALL_DIR%"
+
+if not exist ".git" (
+    echo Initializing local repository...
+    git init
+    git remote add origin "%REPO_URL%"
 )
+
+echo Fetching latest code...
+git fetch origin
+git checkout -f main || git checkout -f master
+git reset --hard origin/main || git reset --hard origin/master
 
 echo [4/5] Installing dependencies...
 cd /d "%INSTALL_DIR%"

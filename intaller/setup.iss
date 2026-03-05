@@ -27,6 +27,7 @@ AppVersion={#AppVersion}
 AppPublisherURL={#AppURL}
 AppSupportURL={#AppURL}/issues
 AppUpdatesURL={#AppURL}/releases
+ChangesEnvironment=yes
 
 ; Install to AppData\Local\Tenrix (no admin required)
 DefaultDirName={#AppInstallDir}
@@ -110,16 +111,8 @@ end;
 
 { ── Setelah install selesai: broadcast PATH change ke semua window ── }
 procedure CurStepChanged(CurStep: TSetupStep);
-var
-  ResultCode: Integer;
 begin
-  if CurStep = ssDone then
-  begin
-    { Broadcast WM_SETTINGCHANGE agar terminal yang sudah buka ikut update PATH }
-    Exec('cmd.exe',
-      '/C setx PATH "%PATH%"',
-      '', SW_HIDE, ewWaitUntilTerminated, ResultCode);
-  end;
+  { Inno Setup with ChangesEnvironment=yes handles the broadcast correctly }
 end;
 
 { ── Custom wizard page: tampilkan pesan sebelum install ── }
