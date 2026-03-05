@@ -15,10 +15,10 @@ Usage:
   tenrix --update        → update Tenrix ke versi terbaru dari GitHub
 """
 
-from __future__ import annotations
 import sys
+from tui.theme import APP_VERSION
 
-TENRIX_VERSION = "1.0.0"
+TENRIX_VERSION = APP_VERSION
 
 HELP_TEXT = """
 Tenrix — AI-Powered Data Analysis CLI

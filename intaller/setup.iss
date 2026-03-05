@@ -15,7 +15,7 @@
 ; ============================================================
 
 #define AppName      "Tenrix"
-#define AppVersion   "1.0.0"
+#define AppVersion   "1.1.0"
 #define AppPublisher "Tenrix"
 #define AppURL       "https://github.com/iskandar221201/tenrix_V.1"
 #define AppInstallDir "{localappdata}\Tenrix"
