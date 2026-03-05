@@ -31,16 +31,24 @@ def run_home(session: dict) -> None:
         return
 
     file_path = sanitize_path(raw_path)
+    perform_load(session, file_path)
 
+
+def perform_load(session: dict, file_path: str) -> bool:
+    """
+    Directly load a file into the session.
+    Returns True if successful, False otherwise.
+    Used by both run_home() and CLI direct loading.
+    """
     # Use multi-source connector
     try:
         source: SourceResult = load_source(file_path)
     except (FileNotFoundError, ValueError) as e:
         print_error(str(e))
-        return
+        return False
     except Exception as e:
         print_error(f"Failed to load file: {e}")
-        return
+        return False
 
     df = source.merged
 
@@ -94,3 +102,4 @@ def run_home(session: dict) -> None:
         print_info(f"  Sheets/Tables: {', '.join(source.sheet_names)}")
     quality = session["data_profile"].get("quality_score", 0)
     print_info(f"  Data quality: {quality:.0f}%")
+    return True

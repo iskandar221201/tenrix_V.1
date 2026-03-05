@@ -32,8 +32,14 @@ logger = get_logger(__name__)
 
 def main():
     try:
+        from cli.cli_args import parse_args, handle_meta_commands
+        args = parse_args()
+        handle_meta_commands(args)
+        
+        file_path = args.get("file")
+        
         from tui.app import run
-        run()
+        run(initial_file=file_path)
     except KeyboardInterrupt:
         print("\nGoodbye.")
         sys.exit(0)
