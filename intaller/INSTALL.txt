@@ -1,0 +1,21 @@
+Tenrix Installation Reference
+=============================
+
+Thank you for installing Tenrix!
+
+Installation Directory: %LOCALAPPDATA%\Tenrix
+CLI Command: tenrix
+
+Commands:
+  tenrix -v              - Check Version
+  tenrix -h              - Help
+  tenrix --update        - Update from GitHub
+  tenrix run             - Start Interactive Mode
+  tenrix run <file>      - Analyze data file directly
+
+Troubleshooting:
+1. If 'tenrix' command is not recognized, restart your terminal.
+2. Ensure Git and Python 3.12 are installed (installer handles this automatically).
+3. Check logs at ~/.tenrix/tenrix.log if errors occur.
+
+GitHub: https://github.com/iskandar221201/tenrix_V.1

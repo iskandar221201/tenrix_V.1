@@ -7,7 +7,7 @@ from utils.logger import get_logger
 logger = get_logger(__name__)
 
 
-def run():
+def run(initial_file: str | None = None):
     """Called by main.py. Manages session and routes to screens."""
     session = {
         "filepath":     None,
@@ -27,6 +27,11 @@ def run():
     # Try to restore API manager from config + keychain
     from ai.api_manager import init_from_config
     session["api_manager"] = init_from_config()
+
+    # Direct file load from CLI
+    if initial_file:
+        from tui.screens.home import perform_load
+        perform_load(session, initial_file)
 
     # First launch: no API keys -> send to settings
     if session["api_manager"] is None:
