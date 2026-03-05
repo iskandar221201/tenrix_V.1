@@ -36,8 +36,8 @@ DisableProgramGroupPage=yes
 ; Output settings
 OutputDir=Output
 OutputBaseFilename=tenrix-install
-SetupIconFile=assets\tenrix.ico
-UninstallDisplayIcon=assets\tenrix.ico
+SetupIconFile=..\assets\tenrix.ico
+UninstallDisplayIcon=..\assets\tenrix.ico
 
 ; No admin rights needed
 PrivilegesRequired=lowest
