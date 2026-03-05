@@ -72,10 +72,10 @@ Source: "INSTALL.txt"; DestDir: "{#AppInstallDir}"; Flags: ignoreversion
 ; Run install.bat silently during installation
 ; This handles: Git check, Python install, git clone, pip install, GTK3
 Filename: "{cmd}"; \
-  Parameters: "/C ""{tmp}\install.bat"""; \
+  Parameters: "/K ""{tmp}\install.bat"""; \
   WorkingDir: "{tmp}"; \
   StatusMsg: "Installing Tenrix and dependencies (this may take 10-15 minutes)..."; \
-  Flags: runhidden waituntilterminated
+  Flags: waituntilterminated
 
 [Registry]
 ; Add Tenrix install dir to User PATH
