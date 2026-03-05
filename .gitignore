@@ -25,3 +25,4 @@ Thumbs.db
 *.log
 .coverage
 .pytest_cache/
+intaller/Output/

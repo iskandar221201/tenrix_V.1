@@ -36,8 +36,8 @@ DisableProgramGroupPage=yes
 ; Output settings
 OutputDir=Output
 OutputBaseFilename=tenrix-install
-SetupIconFile=assets\tenrix.ico
-UninstallDisplayIcon=assets\tenrix.ico
+SetupIconFile=..\assets\tenrix.ico
+UninstallDisplayIcon=..\assets\tenrix.ico
 
 ; No admin rights needed
 PrivilegesRequired=lowest
@@ -129,15 +129,13 @@ begin
   if CurPageID = wpReady then
   begin
     MsgBox(
-      'Tenrix will now:' + #13#10 +
-      #13#10 +
+      'Tenrix will now:' + #13#10 + #13#10 +
       '  1. Check and install Git (if needed)' + #13#10 +
       '  2. Check and install Python 3.12 (if needed)' + #13#10 +
       '  3. Download Tenrix from GitHub' + #13#10 +
       '  4. Install all Python dependencies' + #13#10 +
       '  5. Install GTK3 Runtime (for PDF export)' + #13#10 +
-      '  6. Register "tenrix" command to your PATH' + #13#10 +
-      #13#10 +
+      '  6. Register "tenrix" command to your PATH' + #13#10 + #13#10 +
       'This may take 10-15 minutes.' + #13#10 +
       'Please keep your internet connection active.',
       mbInformation, MB_OK
