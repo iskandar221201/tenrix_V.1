@@ -204,8 +204,11 @@ Available analysis IDs and when to use them:
                          params: {{"n_clusters": 4, "features": ["col1", "col2"]}}
 - time_series_prophet  → forecast future values, detect seasonality
                          params: {{"target": "col", "date_col": "col", "forecast_days": 90}}
+                         CRITICAL: "target" MUST be a numeric value column (e.g. revenue, sales, price).
+                         NEVER use year/month/day/date as target — those are date columns, not values.
 - time_series_arima    → simpler time series for short data
                          params: {{"target": "col", "date_col": "col"}}
+                         CRITICAL: Same rule — "target" must be numeric value, NOT a date column.
 - anomaly_isolation    → find unusual/outlier rows
                          params: {{"features": ["col1", "col2"]}}
 - anomaly_zscore       → find statistical outliers by z-score

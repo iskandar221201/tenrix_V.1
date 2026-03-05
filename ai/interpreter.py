@@ -100,9 +100,16 @@ def find_counter_intuitive(
     Dipanggil setelah interpret().
     """
     try:
-        num_cols = getattr(profile, 'numeric_columns', [])
-        cat_cols = getattr(profile, 'categorical_columns', [])
-        row_count = getattr(profile, 'row_count', 0)
+        if hasattr(profile, 'row_count'):
+            num_cols = getattr(profile, 'numeric_columns', [])
+            cat_cols = getattr(profile, 'categorical_columns', [])
+            row_count = getattr(profile, 'row_count', 0)
+        elif isinstance(profile, dict):
+            num_cols = profile.get('numeric_columns', [])
+            cat_cols = profile.get('categorical_columns', [])
+            row_count = profile.get('row_count', 0)
+        else:
+            num_cols, cat_cols, row_count = [], [], 0
 
         data_context = (
             f"Rows: {row_count:,} | "

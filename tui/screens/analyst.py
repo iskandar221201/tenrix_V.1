@@ -41,6 +41,33 @@ def run_analyst(session: dict) -> None:
     data_profile = session.get("data_profile", {})
     provider_name = api_manager.get_active_provider_name()
     
+    # Ensure data_profile is a DataProfile object for downstream components
+    if isinstance(data_profile, dict):
+        from core.data_loader import DataProfile
+        
+        cols_dict = data_profile.get("columns", {})
+        if isinstance(cols_dict, dict):
+            numeric = [name for name, info in cols_dict.items() if info.get("type") == "numeric"]
+            categorical = [name for name, info in cols_dict.items() if info.get("type") == "categorical"]
+            dates = [name for name, info in cols_dict.items() if info.get("type") == "datetime"]
+            all_cols = list(cols_dict.keys())
+        else:
+            numeric = data_profile.get("numeric_columns", [])
+            categorical = data_profile.get("categorical_columns", [])
+            dates = data_profile.get("date_columns", [])
+            all_cols = data_profile.get("columns", [])
+
+        data_profile = DataProfile(
+            columns=all_cols,
+            row_count=data_profile.get("row_count", len(df)),
+            numeric_columns=numeric,
+            categorical_columns=categorical,
+            date_columns=dates,
+            missing_count=data_profile.get("missing_count", 0),
+            duplicate_count=data_profile.get("duplicate_count", 0),
+            source_info=data_profile.get("source_info", {})
+        )
+    
     if "session_obj" not in session:
         session["session_obj"] = Session(file_path=session.get("filename", "data"))
         
