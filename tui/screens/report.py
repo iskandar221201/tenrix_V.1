@@ -1,6 +1,7 @@
 """Report screen - PDF + Excel export configuration and generation."""
 from pathlib import Path
 from datetime import datetime
+from core.report_path import ReportPathBuilder
 from tui.components import (console, print_header, print_success, print_error,
                             print_warning, print_info)
 from tui.menus import get_keypress
@@ -35,15 +36,11 @@ def run_report(session: dict) -> None:
     console.print()
 
     # Output paths
-    base_name = f"Tenrix_Report_{datetime.now().strftime('%Y-%m-%d')}"
-    output_dir = Path.home() / "Downloads"
+    # Output paths
+    session_filename = session.get("filename", "data")
+    path_builder = ReportPathBuilder(source_path=session_filename)
 
-    pdf_path  = str(output_dir / f"{base_name}.pdf")
-    xlsx_path = str(output_dir / f"{base_name}.xlsx")
-
-    console.print(f"  Output:")
-    console.print(f"    PDF:   {pdf_path}")
-    console.print(f"    Excel: {xlsx_path}")
+    console.print(f"  [dim]→ Reports akan disimpan di: {path_builder.display_folder}[/dim]")
     console.print(f"\n  [key][Enter][/] Generate PDF + Excel   [key][C][/] Cancel")
     key = get_keypress()
 
@@ -67,8 +64,8 @@ def run_report(session: dict) -> None:
             build_report,
             results,
             session.get("data_profile", {}),
-            session.get("filename", "data"),
-            pdf_path,
+            session_filename,
+            path_builder.pdf,
             include_cover=include_cover,
             include_profile=include_profile,
             include_methodology=include_methodology,
@@ -88,8 +85,8 @@ def run_report(session: dict) -> None:
             export_excel,
             results,
             session.get("data_profile", {}),
-            xlsx_path,
-            session.get("filename", "data"),
+            path_builder.excel,
+            session_filename,
             guardrails=guardrails,
             exec_summary=exec_summary,
         )
@@ -116,6 +113,11 @@ def run_report(session: dict) -> None:
             "\n[yellow]⚠ All exports failed. "
             "Analysis data is still available in the current session.[/yellow]"
         )
+    else:
+        # Show final exact output folder location
+        console.print()
+        console.print(f"[dim]📁 Semua file tersimpan di:[/dim]")
+        console.print(f"[cyan]   {path_builder.folder}[/cyan]")
 
     console.print(f"\n  [key][B][/] Back to menu")
     get_keypress()
