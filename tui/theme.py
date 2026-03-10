@@ -1,7 +1,7 @@
 from rich.theme import Theme
 
 APP_NAME = "TENRIX"
-APP_VERSION = "2.0.0"
+APP_VERSION = "2.0.1"
 
 THEME = Theme({
     "header":       "bold bright_blue",

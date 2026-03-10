@@ -33,8 +33,7 @@ def run_report(session: dict) -> None:
     console.print(f"  [success][x][/] Data profile summary")
     console.print(f"  [success][x][/] Analysis results")
     console.print(f"  [ ] Methodology details")
-    if session.get("export_code"):
-        console.print(f"  [success][x][/] Python code script")
+    console.print(f"  [success][x][/] Python code script")
     console.print()
 
     # Output paths
@@ -44,7 +43,7 @@ def run_report(session: dict) -> None:
 
     console.print(f"  [dim]→ Reports akan disimpan di: {path_builder.display_folder}[/dim]")
     
-    prompt_text = "Generate PDF + Excel" + (" + Python Script" if session.get("export_code") else "")
+    prompt_text = "Generate PDF + Excel + Python Script"
     console.print(f"\n  [key][Enter][/] {prompt_text}   [key][C][/] Cancel")
     key = get_keypress()
 
@@ -99,22 +98,21 @@ def run_report(session: dict) -> None:
         export_results["xlsx"] = ("error", str(e))
 
     # ── Python Code Export ────────────────────────────────────────────────
-    if session.get("export_code"):
-        try:
-            from export.code_exporter import CodeExporter
-            
-            # Reattach file_path properties dynamically to match core exporter needs
-            session_obj.file_path = session_filename
-            exporter = CodeExporter(session_obj)
-            
-            code_output = with_spinner(
-                "Exporting Python code...",
-                exporter.export,
-                output_path=str(path_builder.code)
-            )
-            export_results["py"] = ("ok", str(code_output))
-        except Exception as e:
-            export_results["py"] = ("error", str(e))
+    try:
+        from export.code_exporter import CodeExporter
+        
+        # Reattach file_path properties dynamically to match core exporter needs
+        session_obj.file_path = session_filename
+        exporter = CodeExporter(session_obj)
+        
+        code_output = with_spinner(
+            "Exporting Python code...",
+            exporter.export,
+            output_path=str(path_builder.code)
+        )
+        export_results["py"] = ("ok", str(code_output))
+    except Exception as e:
+        export_results["py"] = ("error", str(e))
 
     # ── Show summary ──────────────────────────────────────────────────────
     console.print("\n[bold]Export results:[/bold]")
