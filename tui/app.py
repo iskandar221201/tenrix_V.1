@@ -7,7 +7,7 @@ from utils.logger import get_logger
 logger = get_logger(__name__)
 
 
-def run(initial_file: str | None = None):
+def run(initial_file: str | None = None, template_name: str | None = None):
     """Called by main.py. Manages session and routes to screens."""
     session = {
         "filepath":     None,
@@ -32,6 +32,10 @@ def run(initial_file: str | None = None):
     if initial_file:
         from tui.screens.home import perform_load
         perform_load(session, initial_file)
+        
+        # Apply template if parsed from CLI args
+        if template_name and session.get("df") is not None:
+            _apply_template(session, template_name)
 
     # First launch: no API keys -> send to settings
     if session["api_manager"] is None:
@@ -48,6 +52,7 @@ def run(initial_file: str | None = None):
         elif key in ("r",): _run_analysis_picker(session)
         elif key in ("p",): _run_profiler(session)
         elif key in ("e",): _run_export(session)
+        elif key in ("w",): _save_template(session)
         elif key in ("s",): _run_settings(session)
         elif key in ("t",): _run_about()
         elif key in ("q",): _quit()
@@ -126,10 +131,16 @@ def _show_main_menu(session: dict):
         console.print(f"  [key][R][/] Run analysis     [subheader]pick from 24 analyses[/]")
         console.print(f"  [key][P][/] Profile data     [subheader]data quality report[/]")
         console.print(f"  [key][E][/] Export report    [subheader]generate PDF & Excel[/]")
+        
+        if session.get("results"):
+            console.print(f"  [key][W][/] Save template    [subheader]save analysis pipeline[/]")
+        else:
+            console.print(f"  [disabled][W] Save template    (run analysis first)[/]")
     else:
         console.print(f"  [disabled][R] Run analysis     (load data first)[/]")
         console.print(f"  [disabled][P] Profile data     (load data first)[/]")
         console.print(f"  [disabled][E] Export report    (load data first)[/]")
+        console.print(f"  [disabled][W] Save template    (load data first)[/]")
 
     console.print(f"  [key][S][/] Settings         [subheader]API keys, provider, language[/]")
     console.print(f"  [key][T][/] About            [subheader]What is Tenrix?[/]")
@@ -215,6 +226,138 @@ def _run_export(session):
         return
     from tui.screens.report import run_report
     run_report(session)
+
+
+def _apply_template(session, template_name):
+    from core.template_manager import TemplateManager
+    from core.session import Session
+    from analysis import ANALYSIS_REGISTRY
+    from tui.components import with_spinner, print_analysis_result
+    from analysis.guardrails import check_assumptions
+    from analysis.confidence import calculate_confidence
+    import concurrent.futures
+
+    tm = TemplateManager()
+    template = tm.load(template_name)
+    if not template:
+        print_warning(f"Template '{template_name}' tidak ditemukan.")
+        return
+
+    print_header("APPLYING TEMPLATE", template_name)
+    if template.description:
+        console.print(f"  [dim]{template.description}[/dim]")
+
+    if "session_obj" not in session:
+        session["session_obj"] = Session(file_path=session.get("filename", "data"))
+        
+    session_obj = session["session_obj"]
+    session_obj.template_used = template_name
+    
+    # Optional override for required config
+    if template.selected_columns:
+        session["selected_columns"] = template.selected_columns
+    if template.export_formats:
+        session["export_formats"] = template.export_formats
+
+    results = []
+    df = session["df"]
+    data_profile = session.get("data_profile", {})
+
+    for aid in template.analyses:
+        analysis_func = ANALYSIS_REGISTRY.get(aid)
+        if not analysis_func:
+            print_warning(f"Unknown analysis from template: {aid}")
+            continue
+
+        guardrail = check_assumptions(aid, df, {}, data_profile)
+        session_obj.guardrails[aid] = guardrail
+
+        # Run logic
+        HEAVY = {"clustering_dbscan", "time_series_prophet", "clustering_hierarchical", "umap", "market_basket", "granger_causality"}
+        if aid in HEAVY:
+            with concurrent.futures.ThreadPoolExecutor(max_workers=1) as executor:
+                future = executor.submit(analysis_func, df, {})
+                result = with_spinner(f"Running {aid}...", future.result)
+        else:
+            result = with_spinner(f"Running {aid}...", analysis_func, df, {})
+
+        score, reasons = calculate_confidence(result, guardrail, data_profile, len(df))
+        result.confidence_score = score
+        result.confidence_reasons = reasons
+        
+        # NOTE: Skipping AI interpretation loop for pure template batch run to save API/time, 
+        # or it can be optionally integrated using the normal logic.
+        
+        print_analysis_result(result)
+        session_obj.add("template_run", result)
+        results.append(result)
+
+    session["results"].extend(results)
+    
+    if results:
+        from rich.prompt import Prompt
+        console.print(f"\n[green]✓ Template '{template_name}' successfully executed.[/green]")
+        console.print("[dim]Press Enter to continue...[/dim]")
+        try:
+            Prompt.ask("")
+        except (KeyboardInterrupt, EOFError):
+            pass
+
+
+def _save_template(session):
+    if not session.get("results"):
+        print_warning("Run at least one analysis before saving a template.")
+        return
+
+    from core.template_manager import TemplateManager
+    from rich.prompt import Prompt, Confirm
+    import re
+    
+    tm = TemplateManager()
+    
+    print_header("SAVE TEMPLATE", "Save current pipeline")
+    
+    try:
+        name = Prompt.ask("  Name your template (letters, numbers, dash, underscore)")
+        if not name:
+            return
+            
+        if not re.match(r'^[a-zA-Z0-9_-]+$', name):
+            print_error("Invalid name format.")
+            get_keypress()
+            return
+            
+        if tm.exists(name):
+            if not Confirm.ask(f"  [yellow]Template '{name}' already exists. Overwrite?[/yellow]", default=False):
+                return
+                
+        desc = Prompt.ask("  Description (optional)")
+        
+        session_obj = session.get("session_obj")
+        if not session_obj:
+            print_error("No active session found.")
+            get_keypress()
+            return
+            
+        # Temporarily adapt dictionary attributes so internal `TemplateManager` usage doesn't complain
+        # in case properties weren't explicitly attached yet to `session_obj`.
+        setattr(session_obj, 'results', session.get('results', []))
+        setattr(session_obj, 'selected_columns', session.get('selected_columns'))
+        setattr(session_obj, 'export_formats', session.get('export_formats', ['pdf', 'excel']))
+        setattr(session_obj, 'news_result', None)
+        setattr(session_obj, 'data_profile', session.get('data_profile'))
+        
+        tm.save(name=name, session=session_obj, description=desc)
+        
+        from tui.components import print_success
+        print_success(f"Template '{name}' saved successfully!")
+        console.print(f"  [dim]Analyses included: {len(session['results'])}[/dim]")
+        
+        console.print("\n  [dim]Press any key to return...[/dim]")
+        get_keypress()
+
+    except (KeyboardInterrupt, EOFError):
+        pass
 
 
 def _run_settings(session):
