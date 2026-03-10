@@ -39,6 +39,7 @@ Commands:
 Options:
   --template [name]       Use a saved template for this analysis
   --template-desc [text]  Description when saving a template
+  --export-code           Export reproducible Python code alongside report
 
 Examples:
   tenrix run sales.csv
@@ -108,7 +109,8 @@ def parse_args() -> dict:
         if "--template" in argv:
             idx = argv.index("--template")
             template_name = argv[idx + 1] if idx + 1 < len(argv) else None
-        return {"command": "run", "file": file_path, "template_name": template_name}
+        export_code = "--export-code" in argv
+        return {"command": "run", "file": file_path, "template_name": template_name, "export_code": export_code}
 
     # Shortcut: tenrix data.csv (tanpa 'run')
     if first.endswith((".csv", ".tsv", ".xlsx", ".xls",
@@ -117,7 +119,8 @@ def parse_args() -> dict:
         if "--template" in argv:
             idx = argv.index("--template")
             template_name = argv[idx + 1] if idx + 1 < len(argv) else None
-        return {"command": "run", "file": argv[0], "template_name": template_name}
+        export_code = "--export-code" in argv
+        return {"command": "run", "file": argv[0], "template_name": template_name, "export_code": export_code}
 
     # Unknown command
     return {"command": "unknown", "file": None, "raw": argv[0]}

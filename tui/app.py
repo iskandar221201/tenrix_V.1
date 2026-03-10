@@ -7,7 +7,7 @@ from utils.logger import get_logger
 logger = get_logger(__name__)
 
 
-def run(initial_file: str | None = None, template_name: str | None = None):
+def run(initial_file: str | None = None, template_name: str | None = None, export_code: bool = False):
     """Called by main.py. Manages session and routes to screens."""
     session = {
         "filepath":     None,
@@ -20,6 +20,7 @@ def run(initial_file: str | None = None, template_name: str | None = None):
         "results":      [],   # AnalysisResult objects added to report
         "source":       None, # SourceResult from connectors
         "data_profile_obj": None, # DataProfile dataclass for planner
+        "export_code":  export_code,
     }
 
     _print_banner()
