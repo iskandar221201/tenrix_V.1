@@ -30,6 +30,7 @@ class Session:
     guardrails:      dict = field(default_factory=dict)   # analysis_id → GuardrailResult
     queued_question: Optional[str] = None
     executive_summary: str = ""
+    template_used:   Optional[str] = None
 
     def add(self, question: str, result, counter_finding: Optional[str] = None) -> None:
         self.entries.append(SessionEntry(

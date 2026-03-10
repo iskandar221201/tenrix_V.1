@@ -28,18 +28,26 @@ Usage:
   tenrix [command] [file]
 
 Commands:
-  run [file]     Analyze a data file
-                 Supported: .csv .tsv .xlsx .xls .db .sqlite .sql
-  --update       Update Tenrix to the latest version from GitHub
-  -v, --version  Show Tenrix version
-  -h, --help     Show this help message
+  run [file]              Analyze a data file
+                          Supported: .csv .tsv .xlsx .xls .db .sqlite .sql
+  save-template [name]    Save current analysis config as a template
+  templates               List all saved templates
+  --update                Update Tenrix to the latest version from GitHub
+  -v, --version           Show Tenrix version
+  -h, --help              Show this help message
+
+Options:
+  --template [name]       Use a saved template for this analysis
+  --template-desc [text]  Description when saving a template
+  --export-code           Export reproducible Python code alongside report
 
 Examples:
   tenrix run sales.csv
-  tenrix run database.db
-  tenrix run report.xlsx
-  tenrix sales.csv          (shortcut for 'run')
-  tenrix --update           (pull latest version)
+  tenrix run database.db --template monthly-sales
+  tenrix sales.csv        (shortcut for 'run')
+  tenrix save-template my-template
+  tenrix templates
+  tenrix --update         (pull latest version)
 
 Source : https://github.com/iskandar221201/tenrix_V.1
 Issues : https://github.com/iskandar221201/tenrix_V.1/issues
@@ -73,15 +81,46 @@ def parse_args() -> dict:
     if first == "--update":
         return {"command": "update", "file": None}
 
+    # tenrix save-template [name]
+    if first == "save-template":
+        name = argv[1] if len(argv) > 1 else None
+        desc = ""
+        if "--template-desc" in argv:
+            idx = argv.index("--template-desc")
+            desc = argv[idx + 1] if idx + 1 < len(argv) else ""
+        return {
+            "command": "save-template",
+            "template_name": name,
+            "template_desc": desc,
+        }
+
+    # tenrix templates [--delete name]
+    if first == "templates":
+        if "--delete" in argv:
+            idx = argv.index("--delete")
+            name = argv[idx + 1] if idx + 1 < len(argv) else None
+            return {"command": "templates-delete", "template_name": name}
+        return {"command": "templates-list"}
+
     # run [file]
     if first == "run":
         file_path = argv[1] if len(argv) > 1 else None
-        return {"command": "run", "file": file_path}
+        template_name = None
+        if "--template" in argv:
+            idx = argv.index("--template")
+            template_name = argv[idx + 1] if idx + 1 < len(argv) else None
+        export_code = "--export-code" in argv
+        return {"command": "run", "file": file_path, "template_name": template_name, "export_code": export_code}
 
     # Shortcut: tenrix data.csv (tanpa 'run')
     if first.endswith((".csv", ".tsv", ".xlsx", ".xls",
                         ".db", ".sqlite", ".sqlite3", ".sql")):
-        return {"command": "run", "file": argv[0]}
+        template_name = None
+        if "--template" in argv:
+            idx = argv.index("--template")
+            template_name = argv[idx + 1] if idx + 1 < len(argv) else None
+        export_code = "--export-code" in argv
+        return {"command": "run", "file": argv[0], "template_name": template_name, "export_code": export_code}
 
     # Unknown command
     return {"command": "unknown", "file": None, "raw": argv[0]}
@@ -106,11 +145,71 @@ def handle_meta_commands(args: dict) -> None:
         _run_update()
         sys.exit(0)
 
+    if cmd in ("templates-list", "templates-delete", "save-template"):
+        _run_template_commands(args)
+        sys.exit(0)
+
     if cmd == "unknown":
         raw = args.get("raw", "")
         print(f"Unknown command: '{raw}'")
         print("Run 'tenrix -h' for usage information.")
         sys.exit(1)
+
+
+def _run_template_commands(args: dict) -> None:
+    from core.template_manager import TemplateManager
+    from rich.console import Console
+    from rich.table import Table
+    from rich.prompt import Prompt, Confirm
+
+    console = Console()
+    tm = TemplateManager()
+    cmd = args.get("command")
+
+    if cmd == "templates-list":
+        templates = tm.list_all()
+        if not templates:
+            console.print("[dim]Belum ada template tersimpan.[/dim]")
+            console.print("Gunakan opsi 'Save Template' di menu TUI sesudah analisis selesai.")
+        else:
+            tbl = Table(title="Analysis Templates", border_style="cyan")
+            tbl.add_column("Nama", style="bold cyan")
+            tbl.add_column("Dibuat", style="dim")
+            tbl.add_column("Deskripsi")
+            tbl.add_column("Kolom", style="dim")
+            tbl.add_column("Analisis", style="dim")
+
+            for t in templates:
+                cols = ", ".join(t.selected_columns) if t.selected_columns else "semua"
+                tbl.add_row(
+                    t.name,
+                    t.created_at,
+                    t.description or "-",
+                    cols,
+                    str(len(t.analyses)),
+                )
+            console.print(tbl)
+        return
+
+    if cmd == "templates-delete":
+        name = args.get("template_name")
+        if not name:
+            console.print("[red]Nama template diperlukan.[/red]")
+            sys.exit(1)
+
+        if not tm.exists(name):
+            console.print(f"[red]Template '{name}' tidak ditemukan.[/red]")
+            sys.exit(1)
+
+        if Confirm.ask(f"Hapus template '[cyan]{name}[/cyan]'?", default=False):
+            tm.delete(name)
+            console.print(f"[green]✓ Template '{name}' dihapus.[/green]")
+        return
+        
+    if cmd == "save-template":
+        console.print("[yellow]⚠ Command 'save-template' kini dipindahkan ke dalam menu TUI secara langsung.[/yellow]")
+        console.print("[dim]Silakan analisis data Anda via 'tenrix run data.csv', setelah selesai keluar menu dan pilih 'Save Template'.[/dim]")
+        return
 
 
 def _run_update() -> None:

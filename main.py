@@ -37,9 +37,11 @@ def main():
         handle_meta_commands(args)
         
         file_path = args.get("file")
+        template_name = args.get("template_name")
+        export_code = args.get("export_code")
         
         from tui.app import run
-        run(initial_file=file_path)
+        run(initial_file=file_path, template_name=template_name, export_code=export_code)
     except KeyboardInterrupt:
         print("\nGoodbye.")
         sys.exit(0)
