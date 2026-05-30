@@ -631,22 +631,31 @@ def _clean_sql_dump(sql: str) -> str:
 
 
 def _split_sql_statements(sql: str) -> list[str]:
-    """Split SQL teks menjadi statements by semicolon, respects string literals."""
+    """
+    Split SQL teks menjadi statements by semicolon, respects string literals
+    dan backslash escapes (standar MySQL).
+    """
     statements  = []
     current     = []
     in_string   = False
     string_char = None
+    escaped     = False
 
     for char in sql:
         if in_string:
             current.append(char)
-            if char == string_char:
+            if escaped:
+                escaped = False
+            elif char == "\\":
+                escaped = True
+            elif char == string_char:
                 in_string = False
         else:
             if char in ("'", '"'):
                 in_string   = True
                 string_char = char
                 current.append(char)
+                escaped     = False
             elif char == ";":
                 stmt = "".join(current).strip()
                 if stmt:
