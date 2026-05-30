@@ -26,3 +26,5 @@ Thumbs.db
 .coverage
 .pytest_cache/
 intaller/Output/
+node_modules/
+dist/
