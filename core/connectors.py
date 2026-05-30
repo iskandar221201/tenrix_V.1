@@ -483,6 +483,7 @@ def _load_sql_dump(path: str) -> SourceResult:
 def _clean_sql_dump(sql: str) -> str:
     """
     Bersihkan MySQL/PostgreSQL-specific syntax agar kompatibel dengan DuckDB.
+    Mendukung mysqldump, phpMyAdmin, DBeaver, TablePlus, Sequel Pro, pg_dump.
     """
     # MySQL conditional comments: /*!40101 ... */
     sql = re.sub(r'/\*!.*?\*/', '', sql, flags=re.DOTALL)
@@ -500,42 +501,131 @@ def _clean_sql_dump(sql: str) -> str:
     sql = re.sub(r'^\s*(LOCK|UNLOCK)\s+TABLES[^;]*;', '', sql,
                  flags=re.MULTILINE | re.IGNORECASE)
 
-    # MySQL table options di akhir CREATE TABLE
+    # DROP TABLE / DROP VIEW / DROP IF EXISTS
+    sql = re.sub(r'^\s*DROP\s+(TABLE|VIEW)\s+[^;]*;', '', sql,
+                 flags=re.MULTILINE | re.IGNORECASE)
+
+    # USE `database`;
+    sql = re.sub(r'^\s*USE\s+[^;]+;', '', sql,
+                 flags=re.MULTILINE | re.IGNORECASE)
+
+    # CREATE DATABASE / USE database
+    sql = re.sub(r'^\s*CREATE\s+DATABASE[^;]*;', '', sql,
+                 flags=re.MULTILINE | re.IGNORECASE)
+
+    # MySQL backtick → double quote  (harus SEBELUM regex lain yang pakai quotes)
+    sql = re.sub(r'`([^`]+)`', r'"\1"', sql)
+
+    # IF NOT EXISTS (DuckDB supports this, tapi buat jaga-jaga)
+    # sql = re.sub(r'\bIF\s+NOT\s+EXISTS\b', '', sql, flags=re.IGNORECASE)
+
+    # MySQL table options di akhir CREATE TABLE (sebelum ;)
     sql = re.sub(
-        r'\b(ENGINE|DEFAULT CHARSET|CHARSET|COLLATE|AUTO_INCREMENT|'
-        r'ROW_FORMAT|KEY_BLOCK_SIZE|COMMENT)\s*=\s*\S+',
+        r'\b(ENGINE|DEFAULT\s+CHARSET|CHARSET|DEFAULT\s+CHARACTER\s+SET|'
+        r'CHARACTER\s+SET|COLLATE|AUTO_INCREMENT|'
+        r'ROW_FORMAT|KEY_BLOCK_SIZE|COMMENT)\s*=\s*(?:"[^"]*"|\'[^\']*\'|\S+)',
         '', sql, flags=re.IGNORECASE
     )
 
-    # MySQL backtick → double quote
-    sql = re.sub(r'`([^`]+)`', r'"\1"', sql)
+    # MySQL AUTO_INCREMENT sebagai column attribute
+    sql = re.sub(r'\bAUTO_INCREMENT\b', '', sql, flags=re.IGNORECASE)
+
+    # ON UPDATE CURRENT_TIMESTAMP
+    sql = re.sub(r'\bON\s+UPDATE\s+CURRENT_TIMESTAMP(\(\))?\b', '', sql,
+                 flags=re.IGNORECASE)
+
+    # DEFAULT CURRENT_TIMESTAMP → DEFAULT CURRENT_TIMESTAMP (keep, DuckDB supports)
+    # tapi hapus variasi MySQL: DEFAULT CURRENT_TIMESTAMP()
+    sql = re.sub(r'\bCURRENT_TIMESTAMP\(\)', 'CURRENT_TIMESTAMP', sql,
+                 flags=re.IGNORECASE)
+
+    # MySQL inline KEY / INDEX definitions (baris dalam CREATE TABLE)
+    # e.g.  KEY "idx_name" ("col1", "col2"),
+    #       UNIQUE KEY "idx_name" ("col1"),
+    #       INDEX "idx_name" ("col1"),
+    #       FULLTEXT KEY ...
+    sql = re.sub(
+        r',?\s*\b(?:UNIQUE\s+|FULLTEXT\s+|SPATIAL\s+)?(?:KEY|INDEX)\s+'
+        r'(?:"[^"]*"|\'[^\']*\'|\S+)\s*\([^)]*\)',
+        '', sql, flags=re.IGNORECASE
+    )
+
+    # CONSTRAINT ... FOREIGN KEY ... (hapus seluruh baris constraint FK)
+    sql = re.sub(
+        r',?\s*\bCONSTRAINT\s+(?:"[^"]*"|\'[^\']*\'|\S+)\s+FOREIGN\s+KEY[^,)]*'
+        r'(?:REFERENCES\s+[^,)]*)?',
+        '', sql, flags=re.IGNORECASE
+    )
+
+    # MySQL GENERATED ALWAYS AS ... VIRTUAL
+    sql = re.sub(r'\bGENERATED\s+ALWAYS\s+AS\s*\(.*?\)\s*(?:VIRTUAL|STORED)?', '',
+                 sql, flags=re.IGNORECASE | re.DOTALL)
 
     # PostgreSQL COPY ... \. blocks (tidak ada --inserts)
     sql = re.sub(r'COPY\s+.*?\\\.', '', sql,
                  flags=re.DOTALL | re.IGNORECASE)
 
-    # DROP TABLE (tidak perlu di in-memory)
-    sql = re.sub(r'^\s*DROP TABLE[^;]*;', '', sql,
+    # PostgreSQL-specific: ALTER TABLE ... OWNER TO / SET DEFAULT / sequences
+    sql = re.sub(r'^\s*ALTER\s+TABLE[^;]*OWNER\s+TO[^;]*;', '', sql,
+                 flags=re.MULTILINE | re.IGNORECASE)
+    sql = re.sub(r'^\s*ALTER\s+SEQUENCE[^;]*;', '', sql,
+                 flags=re.MULTILINE | re.IGNORECASE)
+    sql = re.sub(r'^\s*SELECT\s+pg_catalog\.[^;]*;', '', sql,
                  flags=re.MULTILINE | re.IGNORECASE)
 
-    # MySQL-specific types → DuckDB compatible
+    # ── MySQL-specific types → DuckDB compatible ──
+    # PENTING: urutan matters! Tipe yang lebih panjang HARUS duluan
+    # agar \bINT\b tidak mengganti INT di dalam BIGINT/TINYINT/MEDIUMINT
     replacements = [
-        (r'\bTINYINT\b',    'SMALLINT'),
-        (r'\bMEDIUMINT\b',  'INTEGER'),
-        (r'\bINT\b',        'BIGINT'),
-        (r'\bDATETIME\b',   'TIMESTAMP'),
-        (r'\bLONGTEXT\b',   'TEXT'),
-        (r'\bMEDIUMTEXT\b', 'TEXT'),
-        (r'\bTINYTEXT\b',   'TEXT'),
-        (r'\bBLOB\b',       'TEXT'),
-        (r'\bLONGBLOB\b',   'TEXT'),
-        (r'\bENUM\([^)]+\)','VARCHAR'),
-        (r'\bSET\([^)]+\)', 'VARCHAR'),
-        (r'\bUNSIGNED\b',   ''),
-        (r'\bZEROFILL\b',   ''),
+        # Integer types - panjang dulu, lalu pendek
+        (r'\bBIGINT\b',      'BIGINT'),      # keep as is
+        (r'\bMEDIUMINT\b',   'INTEGER'),
+        (r'\bSMALLINT\b',    'SMALLINT'),     # keep as is
+        (r'\bTINYINT\(1\)',   'BOOLEAN'),      # TINYINT(1) = boolean di MySQL
+        (r'\bTINYINT\b',     'SMALLINT'),
+        (r'\bINTEGER\b',     'INTEGER'),      # keep as is
+        (r'\bINT\b',         'INTEGER'),
+
+        # Hapus display width dari tipe integer: INT(11), BIGINT(20), dll
+        # Ini harus SETELAH type replacement di atas
+        (r'\b(BIGINT|INTEGER|SMALLINT|BOOLEAN)\s*\(\d+\)', r'\1'),
+
+        # Float / Double with precision
+        (r'\bDOUBLE\s*\(\d+\s*,\s*\d+\)', 'DOUBLE'),
+        (r'\bFLOAT\s*\(\d+\s*,\s*\d+\)',  'FLOAT'),
+        (r'\bDECIMAL\b',     'DECIMAL'),      # keep, DuckDB supports DECIMAL(p,s)
+
+        # Date/time
+        (r'\bDATETIME\b',    'TIMESTAMP'),
+
+        # Text types
+        (r'\bLONGTEXT\b',    'TEXT'),
+        (r'\bMEDIUMTEXT\b',  'TEXT'),
+        (r'\bTINYTEXT\b',    'TEXT'),
+        (r'\bLONGBLOB\b',    'TEXT'),
+        (r'\bMEDIUMBLOB\b',  'TEXT'),
+        (r'\bTINYBLOB\b',    'TEXT'),
+        (r'\bBLOB\b',        'TEXT'),
+        (r'\bVARBINARY\s*\(\d+\)', 'BLOB'),
+
+        # ENUM / SET → VARCHAR
+        (r'\bENUM\s*\([^)]+\)',  'VARCHAR'),
+        (r'\bSET\s*\([^)]+\)',   'VARCHAR'),
+
+        # MySQL modifiers
+        (r'\bUNSIGNED\b',    ''),
+        (r'\bZEROFILL\b',    ''),
+
+        # MySQL CHARACTER SET per kolom
+        (r'\b(?:CHARACTER\s+SET|CHARSET)\s+(?:"[^"]*"|\'[^\']*\'|\S+)', ''),
+        (r'\bCOLLATE\s+(?:"[^"]*"|\'[^\']*\'|\S+)',                    ''),
     ]
     for pattern, replacement in replacements:
         sql = re.sub(pattern, replacement, sql, flags=re.IGNORECASE)
+
+    # Bersihkan trailing comma sebelum closing paren di CREATE TABLE
+    # e.g. "col3 TEXT,\n)" → "col3 TEXT\n)"
+    sql = re.sub(r',\s*\)', ')', sql)
 
     return sql
 
