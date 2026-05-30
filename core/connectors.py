@@ -509,6 +509,41 @@ def _clean_sql_dump(sql: str) -> str:
     sql = re.sub(r'^\s*USE\s+[^;]+;', '', sql,
                  flags=re.MULTILINE | re.IGNORECASE)
 
+    # Convert MySQL-specific escapes (\' and \") to standard SQL ('' and ")
+    # We use a placeholder for literal backslashes (\\) first to avoid double-processing
+    sql = sql.replace("\\\\", "__BKS__")
+    sql = sql.replace("\\'", "''")
+    sql = sql.replace('\\"', '"')
+    sql = sql.replace("__BKS__", "\\")
+    
+    # Remove MySQL-specific column attributes
+    sql = re.sub(r'\bUNSIGNED\b', '', sql, flags=re.IGNORECASE)
+    sql = re.sub(r'\bZEROFILL\b', '', sql, flags=re.IGNORECASE)
+    sql = re.sub(r'\bAUTO_INCREMENT\b', '', sql, flags=re.IGNORECASE)
+    sql = re.sub(r'\bCHARACTER SET \w+[\w\d]*\b', '', sql, flags=re.IGNORECASE)
+    sql = re.sub(r'\bCOLLATE \w+[\w\d]*\b', '', sql, flags=re.IGNORECASE)
+    sql = re.sub(r'\bCOMMENT\s+\'[^\']*\'', '', sql, flags=re.IGNORECASE)
+    sql = re.sub(r'\bCOMMENT\s+"[^"]+"', '', sql, flags=re.IGNORECASE)
+    
+    # Strip MySQL display widths (e.g., INT(11) -> INTEGER)
+    sql = re.sub(r'\b(TINYINT|SMALLINT|MEDIUMINT|INT|INTEGER|BIGINT)\(\d+\)', r'\1', sql, flags=re.IGNORECASE)
+    sql = re.sub(r'\bINT\b', 'INTEGER', sql, flags=re.IGNORECASE)
+
+    # Handle MySQL GENERATED columns (simplified)
+    sql = re.sub(r'GENERATED ALWAYS AS\s*\(.*?\)\s*(?:VIRTUAL|STORED)', '', sql, flags=re.IGNORECASE | re.DOTALL)
+    
+    # Remove inline constraints/keys that DuckDB doesn't like in CREATE TABLE
+    sql = re.sub(r',\s*(?:CONSTRAINT|PRIMARY KEY|UNIQUE KEY|KEY|INDEX|FULLTEXT|SPATIAL)\b.*?(?=[,\)])', '', sql, flags=re.IGNORECASE | re.DOTALL)
+    
+    # If the first column was a primary key:
+    sql = re.sub(r'^\s*(?:CONSTRAINT|PRIMARY KEY|UNIQUE KEY|KEY|INDEX|FULLTEXT|SPATIAL)\b.*?,', '', sql, flags=re.IGNORECASE | re.MULTILINE)
+
+    # Strip table options (ENGINE=InnoDB, etc.) at the end of CREATE TABLE
+    sql = re.sub(r'\)\s*(?:ENGINE|DEFAULT CHARSET|CHARSET|CHARACTER SET|COLLATE|COMMENT|AUTO_INCREMENT|ROW_FORMAT)\s*=[^;]+;', ');', sql, flags=re.IGNORECASE)
+
+    # Handle CURRENT_TIMESTAMP() -> CURRENT_TIMESTAMP
+    sql = re.sub(r'CURRENT_TIMESTAMP\s*\(\s*\)', 'CURRENT_TIMESTAMP', sql, flags=re.IGNORECASE)
+
     # CREATE DATABASE / USE database
     sql = re.sub(r'^\s*CREATE\s+DATABASE[^;]*;', '', sql,
                  flags=re.MULTILINE | re.IGNORECASE)
@@ -516,16 +551,12 @@ def _clean_sql_dump(sql: str) -> str:
     # MySQL backtick → double quote  (harus SEBELUM regex lain yang pakai quotes)
     sql = re.sub(r'`([^`]+)`', r'"\1"', sql)
 
-    # IF NOT EXISTS (DuckDB supports this, tapi buat jaga-jaga)
-    # sql = re.sub(r'\bIF\s+NOT\s+EXISTS\b', '', sql, flags=re.IGNORECASE)
-
-    # MySQL table options di akhir CREATE TABLE (sebelum ;)
-    sql = re.sub(
-        r'\b(ENGINE|DEFAULT\s+CHARSET|CHARSET|DEFAULT\s+CHARACTER\s+SET|'
-        r'CHARACTER\s+SET|COLLATE|AUTO_INCREMENT|'
-        r'ROW_FORMAT|KEY_BLOCK_SIZE|COMMENT)\s*=\s*(?:"[^"]*"|\'[^\']*\'|\S+)',
-        '', sql, flags=re.IGNORECASE
-    )
+    # Backup: Jika masih ada yang lolos, gunakan regex spesifik per option
+    # Gunakan perulangan untuk menangani multiple options
+    option_regex = r'\b(ENGINE|DEFAULT\s+CHARSET|CHARSET|DEFAULT\s+CHARACTER\s+SET|' \
+                   r'CHARACTER\s+SET|COLLATE|AUTO_INCREMENT|' \
+                   r'ROW_FORMAT|KEY_BLOCK_SIZE|COMMENT)\s*=\s*(\'[^\'\\\\]*(?:\\.[^\'\\\\]*)*\'|"[^"\\\\]*(?:\\.[^"\\\\]*)*"|\S+)'
+    sql = re.sub(option_regex, '', sql, flags=re.IGNORECASE)
 
     # MySQL AUTO_INCREMENT sebagai column attribute
     sql = re.sub(r'\bAUTO_INCREMENT\b', '', sql, flags=re.IGNORECASE)
@@ -635,38 +666,52 @@ def _split_sql_statements(sql: str) -> list[str]:
     Split SQL teks menjadi statements by semicolon, respects string literals
     dan backslash escapes (standar MySQL).
     """
-    statements  = []
-    current     = []
-    in_string   = False
+    statements = []
+    current_stmt = []
+    in_string = False
     string_char = None
-    escaped     = False
-
-    for char in sql:
-        if in_string:
-            current.append(char)
+    escaped = False
+    
+    for i, char in enumerate(sql):
+        if char == "'" or char == '"':
+            if not in_string:
+                in_string = True
+                string_char = char
+                current_stmt.append(char)
+                escaped = False
+            elif char == string_char:
+                if escaped:
+                    current_stmt.append(char)
+                    escaped = False
+                else:
+                    # Closing quote
+                    in_string = False
+                    string_char = None
+                    current_stmt.append(char)
+            else:
+                # Other quote type inside a string
+                current_stmt.append(char)
+                escaped = False
+        elif char == "\\" and in_string:
+            current_stmt.append(char)
+            escaped = not escaped
+        elif char == ";" and not in_string:
+            # Statement boundary
+            current_stmt.append(char)
+            stmt_str = "".join(current_stmt).strip()
+            if stmt_str:
+                statements.append(stmt_str)
+            current_stmt = []
+            escaped = False
+        else:
+            current_stmt.append(char)
             if escaped:
                 escaped = False
-            elif char == "\\":
-                escaped = True
-            elif char == string_char:
-                in_string = False
-        else:
-            if char in ("'", '"'):
-                in_string   = True
-                string_char = char
-                current.append(char)
-                escaped     = False
-            elif char == ";":
-                stmt = "".join(current).strip()
-                if stmt:
-                    statements.append(stmt)
-                current = []
-            else:
-                current.append(char)
-
-    stmt = "".join(current).strip()
-    if stmt:
-        statements.append(stmt)
+    
+    if current_stmt:
+        remainder = "".join(current_stmt).strip()
+        if remainder:
+            statements.append(remainder)
 
     return statements
 
