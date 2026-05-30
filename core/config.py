@@ -106,3 +106,9 @@ def set_language(lang: str) -> None:
 
 def get_ollama_base_url() -> str:
     return _get_config().get("ollama_base_url", "http://localhost:11434")
+
+
+def set_ollama_base_url(url: str) -> None:
+    """Set custom Ollama base URL (e.g. remote API endpoint)."""
+    _get_config()["ollama_base_url"] = url.rstrip("/")
+    _save()

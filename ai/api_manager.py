@@ -26,7 +26,7 @@ class APIManager:
         """Load keys from keychain."""
         meta = PROVIDER_META.get(self._provider_name, {})
         if meta.get("local", False):
-            # Local providers (Ollama) don't need keys
+            # Strictly local providers don't need keys
             self._keys = [""]
             self._provider = get_provider(self._provider_name, "", self._model)
         else:
@@ -36,6 +36,10 @@ class APIManager:
                 self._provider = get_provider(
                     self._provider_name, self._keys[0], self._model
                 )
+            elif self._provider_name == "ollama":
+                # Ollama can run without API key (local mode)
+                self._keys = [""]
+                self._provider = get_provider(self._provider_name, "", self._model)
             else:
                 self._provider = None
 
@@ -109,6 +113,9 @@ class APIManager:
         meta = PROVIDER_META.get(self._provider_name, {})
         if meta.get("local", False):
             return 0
+        # For Ollama, don't count the empty fallback key
+        if self._provider_name == "ollama":
+            return len([k for k in self._keys if k])
         return len(self._keys)
 
 
@@ -119,6 +126,10 @@ def init_from_config() -> "APIManager | None":
     meta = PROVIDER_META.get(provider, {})
 
     if meta.get("local", False):
+        return APIManager(provider, model)
+
+    # Ollama can work without keys (local mode)
+    if provider == "ollama":
         return APIManager(provider, model)
 
     keys = get_all_keys(provider)

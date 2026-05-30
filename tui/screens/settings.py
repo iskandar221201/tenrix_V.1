@@ -24,6 +24,8 @@ def run_settings(session: dict) -> None:
             "Keys Stored": count_keys(provider_name),
             "Language": config.get_language(),
         }
+        if provider_name == "ollama":
+            summary["Ollama URL"] = config.get_ollama_base_url()
         console.print(build_summary_table(summary, "Current Configuration"))
         console.print()
 
@@ -34,6 +36,8 @@ def run_settings(session: dict) -> None:
         console.print("  [key][4][/] Test connection")
         console.print("  [key][5][/] Change model")
         console.print("  [key][6][/] Change language")
+        if provider_name == "ollama":
+            console.print("  [key][7][/] Set Ollama URL")
         console.print("  [key][B][/] Back")
         console.print()
 
@@ -53,6 +57,8 @@ def run_settings(session: dict) -> None:
             _change_model()
         elif key == "6":
             _change_language()
+        elif key == "7" and provider_name == "ollama":
+            _set_ollama_url()
 
 
 def _switch_provider(session: dict):
@@ -86,12 +92,16 @@ def _add_key(session: dict):
     meta = PROVIDER_META.get(provider, {})
 
     if meta.get("local", False):
-        print_info("Local provider (Ollama) doesn't require an API key.")
+        print_info("This provider doesn't require an API key.")
         return
 
-    console.print(f"\n  Adding key for [key]{meta.get('label', provider)}[/]")
-    if meta.get("key_prefix"):
-        console.print(f"  [info]Key should start with: {meta['key_prefix']}[/]")
+    if provider == "ollama":
+        console.print(f"\n  Adding API key for [key]{meta.get('label', provider)}[/]")
+        console.print("  [info]Leave empty and press Enter to skip (local mode)[/]")
+    else:
+        console.print(f"\n  Adding key for [key]{meta.get('label', provider)}[/]")
+        if meta.get("key_prefix"):
+            console.print(f"  [info]Key should start with: {meta['key_prefix']}[/]")
 
     try:
         key = pt_prompt("  API Key: ", is_password=True)
@@ -163,35 +173,48 @@ def _test_connection(session: dict):
 
 
 def _change_model():
-    """Change active model."""
+    """Change active model. Shows suggestions if available, always allows custom input."""
     provider = config.get_active_provider()
     meta = PROVIDER_META.get(provider, {})
     models = meta.get("models", [])
+    current_model = config.get_active_model()
 
-    if not models:
+    console.print(f"\n  Current model: [key]{current_model}[/]")
+
+    if models:
+        console.print(f"\n  Suggested models for {meta.get('label', provider)}:")
+        for i, m in enumerate(models, 1):
+            current = " (current)" if m == current_model else ""
+            console.print(f"    [{i}] {m}{current}")
+        console.print(f"    [C] Custom model name")
+
         try:
-            model = pt_prompt(f"  Enter model name for {provider}: ")
-            if model.strip():
-                config.set_active_model(model.strip())
-                print_success(f"Model set to: {model.strip()}")
-        except (KeyboardInterrupt, EOFError):
+            choice = pt_prompt("\n  Select number or [C] for custom: ")
+            if choice.strip().lower() == "c":
+                _input_custom_model(provider)
+            else:
+                idx = int(choice) - 1
+                if 0 <= idx < len(models):
+                    config.set_active_model(models[idx])
+                    print_success(f"Model set to: {models[idx]}")
+                else:
+                    print_error("Invalid selection.")
+        except (ValueError, KeyboardInterrupt, EOFError):
             pass
-        return
+    else:
+        _input_custom_model(provider)
 
-    console.print(f"\n  Available models for {meta.get('label', provider)}:")
-    for i, m in enumerate(models, 1):
-        current = " (current)" if m == config.get_active_model() else ""
-        console.print(f"    [{i}] {m}{current}")
 
+def _input_custom_model(provider: str):
+    """Prompt user to enter a custom model name."""
     try:
-        choice = pt_prompt("\n  Select model number: ")
-        idx = int(choice) - 1
-        if 0 <= idx < len(models):
-            config.set_active_model(models[idx])
-            print_success(f"Model set to: {models[idx]}")
+        model = pt_prompt(f"  Enter model name for {provider}: ")
+        if model.strip():
+            config.set_active_model(model.strip())
+            print_success(f"Model set to: {model.strip()}")
         else:
-            print_error("Invalid selection.")
-    except (ValueError, KeyboardInterrupt, EOFError):
+            print_warning("No model entered.")
+    except (KeyboardInterrupt, EOFError):
         pass
 
 
@@ -211,3 +234,19 @@ def _reinit_api_manager(session: dict):
     """Re-initialize API manager after changes."""
     from ai.api_manager import init_from_config
     session["api_manager"] = init_from_config()
+
+
+def _set_ollama_url():
+    """Set Ollama base URL for remote API."""
+    current = config.get_ollama_base_url()
+    console.print(f"\n  Current Ollama URL: [key]{current}[/]")
+    console.print("  [info]Enter new URL or press Enter to keep current[/]")
+    try:
+        url = pt_prompt("  Ollama URL: ")
+        if url.strip():
+            config.set_ollama_base_url(url.strip())
+            print_success(f"Ollama URL set to: {url.strip()}")
+        else:
+            print_info("URL unchanged.")
+    except (KeyboardInterrupt, EOFError):
+        pass

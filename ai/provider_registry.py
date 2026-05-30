@@ -37,9 +37,9 @@ PROVIDER_META = {
         "key_prefix":    "sk-or-",
     },
     "ollama": {
-        "label":         "Ollama (Local)",
+        "label":         "Ollama",
         "free_tier":     True,
-        "local":         True,
+        "local":         False,
         "default_model": "llama3",
         "models":        [],
         "key_prefix":    None,

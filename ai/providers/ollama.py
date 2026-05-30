@@ -10,6 +10,13 @@ class OllamaProvider(AIProvider):
     def requires_api_key(self) -> bool:
         return False
 
+    def _build_headers(self) -> dict:
+        """Build request headers. Add Bearer auth if API key is configured."""
+        headers = {"Content-Type": "application/json"}
+        if self.api_key:
+            headers["Authorization"] = f"Bearer {self.api_key}"
+        return headers
+
     def complete(self, prompt: str, system: str = "", **kwargs) -> str:
         try:
             import httpx
@@ -27,12 +34,18 @@ class OllamaProvider(AIProvider):
 
             response = httpx.post(
                 f"{base_url}/api/generate",
+                headers=self._build_headers(),
                 json=payload,
                 timeout=120.0,
             )
             if response.status_code == 429:
                 raise AIProviderError(
                     message="Rate limited", provider="ollama", retryable=True
+                )
+            if response.status_code in (401, 403):
+                raise AIProviderError(
+                    message=f"Auth error: {response.status_code}",
+                    provider="ollama", retryable=False,
                 )
             response.raise_for_status()
             data = response.json()
@@ -48,7 +61,11 @@ class OllamaProvider(AIProvider):
         try:
             import httpx
             base_url = get_ollama_base_url()
-            response = httpx.get(f"{base_url}/api/tags", timeout=5.0)
+            response = httpx.get(
+                f"{base_url}/api/tags",
+                headers=self._build_headers(),
+                timeout=5.0,
+            )
             return response.status_code == 200
         except Exception as e:
             logger.error(f"Ollama validation failed: {e}")
